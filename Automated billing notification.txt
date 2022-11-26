@@ -1,0 +1,52 @@
+Create a SNS Topic 
+
+Create a lambda Function
+
+Add an inline poslicy to the created role with the lambda function
+ Add AllowLambdaAccessSNSCostExplore and replace the ARN of the SNS topic created before
+
+Use the code given below
+import datetime
+import os
+
+import boto3
+from dateutil import relativedelta
+
+
+def lambda_handler(event, context):
+    def monthly_bill(start, end):
+        response = client.get_cost_and_usage(
+            TimePeriod={"Start": start, "End": end},
+            Granularity="MONTHLY",
+            Metrics=["UnblendedCost"],
+        )
+        amount = response["ResultsByTime"][0]["Total"]["UnblendedCost"]["Amount"]
+        output = "%.3f" % float(amount)
+
+        return str(output)
+
+    this_month = datetime.datetime.today()
+    next_month = this_month + relativedelta.relativedelta(months=1)
+
+    this_month_1st = this_month.strftime("%Y-%m-01")
+    next_month_1st = next_month.strftime("%Y-%m-01")
+
+    client = boto3.client("ce")
+    this_month_bill = monthly_bill(this_month_1st, next_month_1st)
+    msg = "This month bill (USD): " + this_month_bill
+
+    client = boto3.client('sns')
+    arn = os.environ['SNS_ARN']
+    subject = "AWS Bill of this month."
+
+    response = client.publish(
+    		TopicArn=arn,
+    		Message=msg,
+    		Subject=subject,
+    )
+
+    return {"statusCode": 200, "body": msg}
+
+Change the Environment Variable
+
+Create an event bridge and schedule the trigger using  cron expression 
